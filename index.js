@@ -2,26 +2,63 @@ let myLinks = [];
 let myLinksFolder = [];
 const inputEl = document.getElementById("input-el");
 const inputBtn = document.getElementById("input-btn");
-const ulEl = document.getElementById("ul-el");
+const ulEl = document.getElementById("folderUl-el");
+const folderUlEl = document.getElementById("ul-el");
 const deleteBtn = document.getElementById("delete-btn");
 const tabBtn = document.getElementById("tab-btn");
 const folderBtn = document.getElementById("folder-btn");
+const draggables = document.querySelectorAll(".draggable");
+const containers = document.querySelectorAll(".container");
+const selected = document.querySelector(".selected");
+const optionsContainer = document.querySelector(".options-container");
+const searchBox = document.querySelector(".search-box input");
 
-//**** before page is fully loaded, list is not yet available
-alert(
-  "Before page load found " +
-    document.querySelectorAll(".accordion-btn").length +
-    " 'accordion-btn'"
-);
+const optionsList = document.querySelectorAll(".option");
+
+draggables.forEach((draggable) => {
+  draggable.addEventListener("dragstart", () => {
+    draggable.classList.add("dragging");
+  });
+
+  draggable.addEventListener("dragend", () => {
+    draggable.classList.remove("dragging");
+  });
+});
+
+containers.forEach((container) => {
+  container.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    const afterElement = getDragAfterElement(container, e.clientY);
+    const draggable = document.querySelector(".dragging");
+    if (afterElement == null) {
+      container.appendChild(draggable);
+    } else {
+      container.insertBefore(draggable, afterElement);
+    }
+  });
+});
+
+function getDragAfterElement(container, y) {
+  const draggableElements = [
+    ...container.querySelectorAll(".draggable:not(.dragging)"),
+  ];
+
+  return draggableElements.reduce(
+    (closest, child) => {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) {
+        return { offset: offset, element: child };
+      } else {
+        return closest;
+      }
+    },
+    { offset: Number.NEGATIVE_INFINITY }
+  ).element;
+}
 
 //**** after page has fully loadded, list is available.
 window.onload = function () {
-  alert(
-    "After page loaded found: " +
-      document.querySelectorAll(".accordion-btn").length +
-      " 'accordion-btn'"
-  );
-
   ///for all ".accordion", there are event listeners
   document.querySelectorAll(".accordion-btn").forEach((button) => {
     button.addEventListener("click", () => {
@@ -70,13 +107,13 @@ function render(leads, folder) {
   let folderItems = "";
   if (folder) {
     for (let i = 0; i < folder.length; i++) {
-      folderItems += `<li>
+      folderItems += `<li class="draggable" draggable="true">
             <div class="accordion">
-                <button type="button" class="accordion-btn">
+                <button class="accordion-btn" type="button">
                   ${folder[i]}
                 </button> 
-                <div class="folder-links">
-                    <p>rstdrstdrsd</p>
+                <div class="folder-links container">
+                    <p class="draggable" draggable="true">rstdrstdrsd</p>
                 </div>
               </div> 
           </li>`;
@@ -84,14 +121,17 @@ function render(leads, folder) {
   }
   if (leads) {
     for (let i = 0; i < leads.length; i++) {
-      listItems += `<li>
-              <a target= '_blank' href= '${leads[i]}'>
+      listItems += `
+          <li class="draggable" draggable="true">
+              <a class="draggable" draggable="true" target= '_blank' href= '${leads[i]}'>
                 ${leads[i]} 
               </a>
-          </li>`;
+          </li>
+        `;
     }
   }
-  ulEl.innerHTML = folderItems + listItems;
+  folderUlEl.innerHTML = folderItems;
+  ulEl.innerHTML = listItems;
 }
 
 ///Sets myLinks array to empty string and invokes render to render empy string, clearing
@@ -122,3 +162,41 @@ folderBtn.addEventListener("click", function () {
 
   render(myLinks, myLinksFolder);
 });
+
+selected.addEventListener("click", () => {
+  optionsContainer.classList.toggle("active");
+
+  searchBox.value = "";
+  filterList("");
+
+  if (optionsContainer.classList.contains("active")) {
+    searchBox.focus();
+  }
+});
+
+//each one is defined by o
+optionsList.forEach((o) => {
+  o.addEventListener("click", () => {
+    selected.innerHTML = o.querySelector("label").innerHTML;
+    optionsContainer.classList.remove("active");
+  });
+});
+
+///keyup whenever key is released, so whenever someone starts typing
+//function gets value of the searchbox and passes to filterList
+searchBox.addEventListener("keyup", function (e) {
+  filterList(e.target.value);
+});
+
+const filterList = (searchTerm) => {
+  searchTerm = searchTerm.toLowerCase();
+  optionsList.forEach((option) => {
+    let label =
+      option.firstElementChild.nextElementSibling.innerText.toLowerCase();
+    if (label.indexOf(searchTerm) != -1) {
+      option.style.display = "block";
+    } else {
+      option.style.display = "none";
+    }
+  });
+};
